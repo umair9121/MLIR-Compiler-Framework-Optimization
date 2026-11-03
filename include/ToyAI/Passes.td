@@ -19,4 +19,9 @@ def ConvertToyAIToLinalg : Pass<"convert-toyai-to-linalg", "ModuleOp"> {
   ];
 }
 
+def ToyAIMemrefCopyToLinalg : Pass<"toyai-memref-copy-to-linalg", "func::FuncOp"> {
+  let summary = "Rewrite memref.copy into linalg.copy so copies become loops/kernels";
+  let dependentDialects = ["::mlir::linalg::LinalgDialect"];
+}
+
 #endif // TOYAI_PASSES_TD
