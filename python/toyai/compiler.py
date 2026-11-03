@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -117,6 +118,32 @@ def msvc_environment() -> dict[str, str]:
     return env
 
 
+_STRUCTORS_RE = re.compile(r"^@llvm\.global_(ctors|dtors) = .*$", re.MULTILINE)
+
+
+def explicit_initializers(llvm_ir: str) -> str:
+    """Replaces llvm.global_ctors/dtors with exported toyai_init/toyai_fini.
+
+    GPU modules are loaded by global constructors that call into the CUDA
+    driver. In a DLL those run inside DllMain, under the Windows loader lock,
+    where initializing CUDA deadlocks. The runtime calls toyai_init right after
+    LoadLibrary instead.
+    """
+    funcs = {"ctors": [], "dtors": []}
+
+    def strip(match: re.Match) -> str:
+        funcs[match.group(1)] += re.findall(r"ptr @([\w.$]+)", match.group(0))
+        return ""
+
+    llvm_ir = _STRUCTORS_RE.sub(strip, llvm_ir)
+
+    def wrapper(name: str, callees: list[str]) -> str:
+        calls = "".join(f"  call void @{c}()\n" for c in callees)
+        return f"\ndefine dllexport void @{name}() {{\n{calls}  ret void\n}}\n"
+
+    return llvm_ir + wrapper("toyai_init", funcs["ctors"]) + wrapper("toyai_fini", funcs["dtors"][::-1])
+
+
 def _run(cmd: list[str], what: str, env: dict | None = None, input_text: str | None = None) -> str:
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env, input=input_text)
     if proc.returncode != 0:
@@ -169,6 +196,7 @@ class Compiler:
         ll = workdir / "module.ll"
         _run([str(self.tc.tool("mlir-translate")), "--mlir-to-llvmir", str(workdir / "lowered.mlir"),
               "-o", str(ll)], "mlir-translate")
+        ll.write_text(explicit_initializers(ll.read_text()))
 
         obj = workdir / "module.obj"
         _run([str(self.tc.tool("llc")), "-O3", "-mcpu=alderlake", "--fp-contract=fast", "-filetype=obj",

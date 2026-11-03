@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import weakref
 from functools import lru_cache
 from pathlib import Path
 
@@ -93,6 +94,11 @@ class CompiledModule:
         _register_dll_dirs(list(dll_dirs))
         self.dll_path = Path(dll_path)
         self._dll = ctypes.CDLL(str(self.dll_path))
+        # Module constructors (e.g. loading GPU kernels) cannot run inside
+        # DllMain, so the compiler exports them as toyai_init / toyai_fini.
+        if hasattr(self._dll, "toyai_init"):
+            self._dll.toyai_init()
+            weakref.finalize(self, self._dll.toyai_fini)
         self.functions = {fn.name: CompiledFunction(self._dll, fn) for fn in program.functions}
 
     def __getattr__(self, name: str) -> CompiledFunction:
