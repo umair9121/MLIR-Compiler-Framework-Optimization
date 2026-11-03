@@ -1,5 +1,6 @@
 //===- toyai-opt.cpp - ToyAI optimizer driver -----------------------------===//
 
+#include "ToyAI/Passes.h"
 #include "ToyAI/ToyAIDialect.h"
 
 #include "mlir/IR/MLIRContext.h"
@@ -10,6 +11,7 @@
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
+  mlir::toyai::registerToyAIPasses();
 
   mlir::DialectRegistry registry;
   registry.insert<mlir::toyai::ToyAIDialect>();
