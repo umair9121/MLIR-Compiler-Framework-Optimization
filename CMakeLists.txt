@@ -29,6 +29,10 @@ include_directories(${TOYAI_SOURCE_DIR}/include)
 include_directories(${TOYAI_BINARY_DIR}/include)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
+if(MSVC)
+  # MLIR's builtin attributes instantiate std::complex<APFloat>.
+  add_compile_definitions(_SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING)
+endif()
 
 add_subdirectory(include)
 add_subdirectory(lib)
