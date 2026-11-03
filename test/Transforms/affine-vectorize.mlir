@@ -43,18 +43,35 @@ func.func @relu_fill(%A: memref<32xf32>, %B: memref<32xf32>, %fill: f32) {
 
 // -----
 
-// Not vectorized: strided access, trip count not a multiple of 8, and a
-// reduction into an invariant location.
+// A trip count that is not a multiple of 8 gets a scalar epilogue.
+// CHECK-LABEL: func.func @remainder
+// CHECK:       affine.for %{{.*}} = 0 to 8 step 8 {
+// CHECK:         affine.vector_load
+// CHECK:       affine.for %{{.*}} = 8 to 12 {
+// CHECK-NOT:     vector
+// CHECK:         affine.load
+func.func @remainder(%A: memref<12xf32>, %B: memref<12xf32>) {
+  affine.for %j = 0 to 12 {
+    %a = affine.load %A[%j] : memref<12xf32>
+    affine.store %a, %B[%j] : memref<12xf32>
+  }
+  return
+}
+
+// -----
+
+// Not vectorized: strided access, fewer than 8 iterations, and a reduction
+// into an invariant location.
 // CHECK-LABEL: func.func @rejected
 // CHECK-NOT:   vector
-func.func @rejected(%A: memref<64x64xf32>, %B: memref<12xf32>, %s: memref<1xf32>) {
+func.func @rejected(%A: memref<64x64xf32>, %B: memref<6xf32>, %s: memref<1xf32>) {
   affine.for %j = 0 to 64 {
     %a = affine.load %A[%j, 0] : memref<64x64xf32>
     affine.store %a, %A[0, %j] : memref<64x64xf32>
   }
-  affine.for %j = 0 to 12 {
-    %b = affine.load %B[%j] : memref<12xf32>
-    affine.store %b, %B[%j] : memref<12xf32>
+  affine.for %j = 0 to 6 {
+    %b = affine.load %B[%j] : memref<6xf32>
+    affine.store %b, %B[%j] : memref<6xf32>
   }
   affine.for %j = 0 to 64 {
     %a = affine.load %A[0, %j] : memref<64x64xf32>

@@ -46,12 +46,13 @@ bool isElementwiseFloatOp(Operation *op) {
              arith::MinNumFOp, arith::NegFOp>(op);
 }
 
-/// Checks that every op in the loop body can be vectorized along `iv`.
+/// Checks that every op in the loop body can be vectorized along `iv` and the
+/// loop runs at least one full vector.
 bool canVectorize(AffineForOp loop, unsigned width) {
   if (loop.getNumResults() != 0 || loop.getStepAsInt() != 1)
     return false;
   std::optional<uint64_t> trip = getConstantTripCount(loop);
-  if (!trip || *trip < width || *trip % width != 0)
+  if (!trip || *trip < width)
     return false;
 
   Value iv = loop.getInductionVar();
@@ -78,6 +79,30 @@ bool canVectorize(AffineForOp loop, unsigned width) {
     }
   }
   return sawVectorAccess;
+}
+
+/// If the trip count is not a multiple of `width`, splits off the last
+/// `trip % width` iterations into a scalar epilogue loop. Returns false if the
+/// loop bounds are too complex to split.
+bool peelRemainder(AffineForOp loop, unsigned width) {
+  uint64_t trip = *getConstantTripCount(loop);
+  uint64_t remainder = trip % width;
+  if (remainder == 0)
+    return true;
+  AffineMap lbMap = loop.getLowerBoundMap();
+  if (lbMap.getNumResults() != 1)
+    return false;
+  AffineMap splitMap =
+      AffineMap::get(lbMap.getNumDims(), lbMap.getNumSymbols(),
+                     lbMap.getResult(0) + (trip - remainder));
+  SmallVector<Value> lbOperands(loop.getLowerBoundOperands());
+
+  OpBuilder b(loop);
+  b.setInsertionPointAfter(loop);
+  auto epilogue = cast<AffineForOp>(b.clone(*loop.getOperation()));
+  epilogue.setLowerBound(lbOperands, splitMap);
+  loop.setUpperBound(lbOperands, splitMap);
+  return true;
 }
 
 void vectorize(AffineForOp loop, unsigned width) {
@@ -155,7 +180,8 @@ struct ToyAIAffineVectorizePass
         innermost.push_back(loop);
     });
     for (AffineForOp loop : innermost)
-      vectorize(loop, vectorWidth);
+      if (peelRemainder(loop, vectorWidth))
+        vectorize(loop, vectorWidth);
   }
 };
 

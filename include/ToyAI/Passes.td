@@ -47,9 +47,10 @@ def ToyAIAffineCacheTiling : Pass<"toyai-affine-cache-tiling", "func::FuncOp"> {
 def ToyAIAffineVectorize : Pass<"toyai-affine-vectorize", "func::FuncOp"> {
   let summary = "Vectorize innermost unit-stride affine loops";
   let description = [{
-    Rewrites an innermost `affine.for` with a constant trip count divisible by
+    Rewrites an innermost `affine.for` with a constant trip count of at least
     the vector width into a loop of step `vector-width` whose loads and stores
-    are `affine.vector_load` / `affine.vector_store`. Loads invariant in the
+    are `affine.vector_load` / `affine.vector_store`; leftover iterations run
+    in a scalar epilogue loop. Loads invariant in the
     loop become scalar loads + `vector.broadcast`. Loops containing anything
     other than affine loads/stores and elementwise float arithmetic, or with
     non-unit-stride accesses, are left untouched.

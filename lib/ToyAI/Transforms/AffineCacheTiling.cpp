@@ -11,8 +11,9 @@
 //   tj = min(trip_j, 128)                     -- long unit-stride inner rows
 //   tk = L1/2 / tj                            -- a tk x tj panel of B fits L1
 //   ti = L2/2 / (tk + tj)                     -- A and C panels fit L2
-// each rounded down to a power of two that divides the trip count, so the
-// tiled nest has no partial tiles and constant inner trip counts.
+// A loop that fits its budget is left whole; otherwise the tile is rounded
+// down to a power of two that divides the trip count, so the tiled nest has
+// no partial tiles and constant inner trip counts.
 //
 //===----------------------------------------------------------------------===//
 
@@ -40,8 +41,11 @@ namespace {
 constexpr uint64_t kBytesPerElement = 4; // f32
 constexpr uint64_t kMaxInnerTile = 128;
 
-/// Largest power of two that is <= `budget` and divides `trip`.
+/// `trip` if it fits the budget, else the largest power of two that is
+/// <= `budget` and divides `trip`.
 uint64_t pickTile(uint64_t trip, uint64_t budget) {
+  if (trip <= budget)
+    return trip;
   uint64_t t = 1;
   while (t * 2 <= budget && trip % (t * 2) == 0)
     t *= 2;
