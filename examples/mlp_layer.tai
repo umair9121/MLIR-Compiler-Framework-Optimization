@@ -1,0 +1,5 @@
+# One dense layer: relu(X @ W + B)
+def mlp_layer(X: f32[64, 256], W: f32[256, 128], B: f32[64, 128]) -> f32[64, 128] {
+  H = X @ W + B;
+  return relu(H);
+}

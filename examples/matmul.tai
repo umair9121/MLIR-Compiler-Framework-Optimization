@@ -1,0 +1,4 @@
+# Plain matrix multiplication.
+def matmul_256(A: f32[256, 512], B: f32[512, 256]) -> f32[256, 256] {
+  return matmul(A, B);
+}

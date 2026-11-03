@@ -1,0 +1,5 @@
+# 3x3 "same" convolution followed by ReLU (batch 1, 16 -> 32 channels, 64x64 image).
+def conv_block(X: f32[1, 16, 64, 64], K: f32[32, 16, 3, 3]) -> f32[1, 32, 64, 64] {
+  Y = conv2d(X, K, stride=1, padding=1);
+  return relu(Y);
+}
