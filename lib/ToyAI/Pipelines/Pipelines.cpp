@@ -4,6 +4,7 @@
 #include "ToyAI/Passes.h"
 
 #include "mlir/Pass/PassRegistry.h"
+#include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace mlir;
@@ -31,6 +32,14 @@ void toyai::buildToyAICpuPipeline(OpPassManager &pm,
   addPipeline(pm, "buffer-deallocation-pipeline,"
                   "func.func(convert-linalg-to-affine-loops,canonicalize)");
 
+  if (opts.optimize) {
+    addPipeline(pm, llvm::formatv(
+                        "func.func(toyai-affine-cache-tiling{{l1-kb={0} "
+                        "l2-kb={1}},canonicalize)",
+                        opts.l1KB.getValue(), opts.l2KB.getValue())
+                        .str());
+  }
+
   addPipeline(pm, "lower-affine,expand-strided-metadata,lower-affine,"
                   "convert-scf-to-cf,canonicalize,"
                   "convert-vector-to-llvm,finalize-memref-to-llvm,"
@@ -47,6 +56,6 @@ void toyai::registerToyAIPipelines() {
       [](OpPassManager &pm) { buildToyAIBufferizationPipeline(pm); });
   PassPipelineRegistration<CpuPipelineOptions>(
       "toyai-cpu-pipeline",
-      "Lower ToyAI to the LLVM dialect for x86 CPUs",
+      "Lower ToyAI to the LLVM dialect for x86 CPUs (cache-tiled)",
       buildToyAICpuPipeline);
 }

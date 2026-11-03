@@ -2,6 +2,7 @@ add_mlir_dialect_library(MLIRToyAI
   IR/ToyAIDialect.cpp
   IR/ToyAIOps.cpp
   Conversion/ToyAIToLinalg.cpp
+  Transforms/AffineCacheTiling.cpp
   Transforms/MemrefCopyToLinalg.cpp
   Pipelines/Pipelines.cpp
 
@@ -13,6 +14,9 @@ add_mlir_dialect_library(MLIRToyAI
   MLIRToyAIPassIncGen
 
   LINK_LIBS PUBLIC
+  MLIRAffineAnalysis
+  MLIRAffineDialect
+  MLIRAffineUtils
   MLIRArithDialect
   MLIRFuncDialect
   MLIRIR
