@@ -26,11 +26,30 @@ struct CpuPipelineOptions : public PassPipelineOptions<CpuPipelineOptions> {
       llvm::cl::init(8)};
 };
 
+struct GpuPipelineOptions : public PassPipelineOptions<GpuPipelineOptions> {
+  PassOptions::Option<int64_t> blockX{*this, "block-x",
+                                      llvm::cl::desc("Threads per block (x)"),
+                                      llvm::cl::init(16)};
+  PassOptions::Option<int64_t> blockY{*this, "block-y",
+                                      llvm::cl::desc("Threads per block (y)"),
+                                      llvm::cl::init(16)};
+  PassOptions::Option<std::string> chip{*this, "chip",
+                                        llvm::cl::desc("NVIDIA SM target"),
+                                        llvm::cl::init("sm_86")};
+  PassOptions::Option<std::string> format{
+      *this, "format",
+      llvm::cl::desc("GPU binary format: fatbin, bin (cubin) or isa (PTX)"),
+      llvm::cl::init("fatbin")};
+};
+
 /// ToyAI -> linalg -> bufferized memrefs with results as out-params.
 void buildToyAIBufferizationPipeline(OpPassManager &pm);
 
 /// Full CPU lowering down to the LLVM dialect.
 void buildToyAICpuPipeline(OpPassManager &pm, const CpuPipelineOptions &opts);
+
+/// Full NVIDIA GPU lowering down to the LLVM dialect + embedded GPU binary.
+void buildToyAIGpuPipeline(OpPassManager &pm, const GpuPipelineOptions &opts);
 
 void registerToyAIPipelines();
 

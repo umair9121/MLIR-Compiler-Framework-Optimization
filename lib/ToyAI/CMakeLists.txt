@@ -5,6 +5,8 @@ add_mlir_dialect_library(MLIRToyAI
   Transforms/AffineCacheTiling.cpp
   Transforms/AffineRegisterBlocking.cpp
   Transforms/AffineVectorize.cpp
+  Transforms/GPUDataMovement.cpp
+  Transforms/GPUTiling.cpp
   Transforms/MemrefCopyToLinalg.cpp
   Pipelines/Pipelines.cpp
 
@@ -22,11 +24,16 @@ add_mlir_dialect_library(MLIRToyAI
   MLIRAffineUtils
   MLIRArithDialect
   MLIRFuncDialect
+  MLIRGPUDialect
+  MLIRGPUPipelines
+  MLIRGPUTransforms
   MLIRIR
   MLIRInferTypeOpInterface
   MLIRLinalgDialect
   MLIRMemRefDialect
   MLIRPass
+  MLIRSCFDialect
+  MLIRSCFTransforms
   MLIRSideEffectInterfaces
   MLIRTensorDialect
   MLIRTransforms

@@ -79,4 +79,41 @@ def ToyAIAffineRegisterBlocking : Pass<"toyai-affine-register-blocking", "func::
   ];
 }
 
+def ToyAIGPUTiling : Pass<"toyai-gpu-tiling", "func::FuncOp"> {
+  let summary = "Tile scf.parallel loops into GPU blocks and threads";
+  let description = [{
+    First keeps reduction accumulators in registers: an scf.for that loads
+    and stores the same loop-invariant element (C[i, j] in matmul) becomes
+    an scf.for with an iter_arg, so each thread reads and writes its output
+    once instead of once per reduction step.
+
+    Then tiles the innermost two dimensions of every top-level scf.parallel
+    loop by (block-y, block-x) and annotates the outer loop with block
+    mapping and the intra-tile loop with thread mapping so that
+    `convert-parallel-loops-to-gpu` produces a 2-D grid of 2-D blocks.
+    Remaining outer dimensions are mapped to grid z / sequential loops.
+  }];
+  let options = [
+    Option<"blockX", "block-x", "int64_t", /*default=*/"16", "Threads per block along x">,
+    Option<"blockY", "block-y", "int64_t", /*default=*/"16", "Threads per block along y">,
+  ];
+  let dependentDialects = [
+    "::mlir::gpu::GPUDialect",
+    "::mlir::scf::SCFDialect",
+    "::mlir::affine::AffineDialect",
+  ];
+}
+
+def ToyAIGPUDataMovement : Pass<"toyai-gpu-data-movement", "func::FuncOp"> {
+  let summary = "Place buffers on the device and insert host<->device copies";
+  let description = [{
+    Allocates a device buffer (`gpu.alloc`) for every memref argument and
+    copies inputs to the device on entry and outputs back on exit
+    (`gpu.memcpy`). Function-local `memref.alloc`s become device allocations.
+    All uses inside the function are redirected to the device buffers, so
+    every computation must run in GPU kernels.
+  }];
+  let dependentDialects = ["::mlir::gpu::GPUDialect"];
+}
+
 #endif // TOYAI_PASSES_TD

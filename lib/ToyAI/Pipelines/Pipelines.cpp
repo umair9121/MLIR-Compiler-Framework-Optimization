@@ -3,6 +3,7 @@
 #include "ToyAI/Pipelines.h"
 #include "ToyAI/Passes.h"
 
+#include "mlir/Dialect/GPU/Pipelines/Passes.h"
 #include "mlir/Pass/PassRegistry.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/raw_ostream.h"
@@ -54,6 +55,25 @@ void toyai::buildToyAICpuPipeline(OpPassManager &pm,
                   "reconcile-unrealized-casts,canonicalize,cse");
 }
 
+void toyai::buildToyAIGpuPipeline(OpPassManager &pm,
+                                  const GpuPipelineOptions &opts) {
+  buildToyAIBufferizationPipeline(pm);
+  addPipeline(pm, llvm::formatv(
+                      "func.func(convert-linalg-to-parallel-loops,canonicalize,"
+                      "toyai-gpu-tiling{{block-x={0} block-y={1}},"
+                      "toyai-gpu-data-movement,"
+                      "convert-parallel-loops-to-gpu,canonicalize),"
+                      "gpu-kernel-outlining,func.func(gpu-async-region)",
+                      opts.blockX.getValue(), opts.blockY.getValue())
+                      .str());
+
+  gpu::GPUToNVVMPipelineOptions nvvm;
+  nvvm.cubinChip = opts.chip.getValue();
+  nvvm.cubinFormat = opts.format.getValue();
+  nvvm.optLevel = 3;
+  gpu::buildLowerToNVVMPassPipeline(pm, nvvm);
+}
+
 void toyai::registerToyAIPipelines() {
   PassPipelineRegistration<>(
       "toyai-bufferize-pipeline",
@@ -63,4 +83,8 @@ void toyai::registerToyAIPipelines() {
       "toyai-cpu-pipeline",
       "Lower ToyAI to the LLVM dialect for x86 CPUs (tiled + vectorized)",
       buildToyAICpuPipeline);
+  PassPipelineRegistration<GpuPipelineOptions>(
+      "toyai-gpu-pipeline",
+      "Lower ToyAI to NVVM kernels + host LLVM code for NVIDIA GPUs",
+      buildToyAIGpuPipeline);
 }
