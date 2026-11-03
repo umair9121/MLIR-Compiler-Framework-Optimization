@@ -44,4 +44,39 @@ def ToyAIAffineCacheTiling : Pass<"toyai-affine-cache-tiling", "func::FuncOp"> {
   let dependentDialects = ["::mlir::affine::AffineDialect"];
 }
 
+def ToyAIAffineVectorize : Pass<"toyai-affine-vectorize", "func::FuncOp"> {
+  let summary = "Vectorize innermost unit-stride affine loops";
+  let description = [{
+    Rewrites an innermost `affine.for` with a constant trip count divisible by
+    the vector width into a loop of step `vector-width` whose loads and stores
+    are `affine.vector_load` / `affine.vector_store`. Loads invariant in the
+    loop become scalar loads + `vector.broadcast`. Loops containing anything
+    other than affine loads/stores and elementwise float arithmetic, or with
+    non-unit-stride accesses, are left untouched.
+  }];
+  let options = [
+    Option<"vectorWidth", "vector-width", "unsigned", /*default=*/"8",
+           "Number of f32 lanes (8 = AVX2)">,
+  ];
+  let dependentDialects = ["::mlir::vector::VectorDialect"];
+}
+
+def ToyAIAffineRegisterBlocking : Pass<"toyai-affine-register-blocking", "func::FuncOp"> {
+  let summary = "Unroll-and-jam the loop surrounding each vectorized inner loop";
+  let description = [{
+    Unroll-and-jams the parent of every innermost vectorized loop by the
+    largest divisor of its trip count that is <= `unroll`, then unrolls the
+    innermost loop by `inner-unroll`, then forwards vector stores to later
+    loads of the same address and deletes stores that are overwritten before
+    being read. This keeps accumulators in registers across several
+    reduction iterations. Relies on ToyAI buffers never aliasing.
+  }];
+  let options = [
+    Option<"unrollJamFactor", "unroll", "unsigned", /*default=*/"4",
+           "Maximum unroll-and-jam factor">,
+    Option<"innerUnrollFactor", "inner-unroll", "unsigned", /*default=*/"2",
+           "Unroll factor for the innermost vector loop">,
+  ];
+}
+
 #endif // TOYAI_PASSES_TD

@@ -171,7 +171,7 @@ class Compiler:
               "-o", str(ll)], "mlir-translate")
 
         obj = workdir / "module.obj"
-        _run([str(self.tc.tool("llc")), "-O3", "-mcpu=alderlake", "-filetype=obj",
+        _run([str(self.tc.tool("llc")), "-O3", "-mcpu=alderlake", "--fp-contract=fast", "-filetype=obj",
               "-mtriple=x86_64-pc-windows-msvc", str(ll), "-o", str(obj)], "llc")
 
         libdir = self.tc.llvm_install / "lib"

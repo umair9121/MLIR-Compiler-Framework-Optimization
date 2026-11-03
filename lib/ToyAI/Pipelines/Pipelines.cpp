@@ -35,8 +35,13 @@ void toyai::buildToyAICpuPipeline(OpPassManager &pm,
   if (opts.optimize) {
     addPipeline(pm, llvm::formatv(
                         "func.func(toyai-affine-cache-tiling{{l1-kb={0} "
-                        "l2-kb={1}},canonicalize)",
-                        opts.l1KB.getValue(), opts.l2KB.getValue())
+                        "l2-kb={1}},canonicalize,"
+                        "toyai-affine-vectorize{{vector-width={2}},"
+                        "toyai-affine-register-blocking{{unroll={3}},"
+                        "affine-scalrep,canonicalize,"
+                        "affine-loop-invariant-code-motion,canonicalize,cse)",
+                        opts.l1KB.getValue(), opts.l2KB.getValue(),
+                        opts.vectorWidth.getValue(), opts.unroll.getValue())
                         .str());
   }
 
@@ -56,6 +61,6 @@ void toyai::registerToyAIPipelines() {
       [](OpPassManager &pm) { buildToyAIBufferizationPipeline(pm); });
   PassPipelineRegistration<CpuPipelineOptions>(
       "toyai-cpu-pipeline",
-      "Lower ToyAI to the LLVM dialect for x86 CPUs (cache-tiled)",
+      "Lower ToyAI to the LLVM dialect for x86 CPUs (tiled + vectorized)",
       buildToyAICpuPipeline);
 }

@@ -3,6 +3,8 @@ add_mlir_dialect_library(MLIRToyAI
   IR/ToyAIOps.cpp
   Conversion/ToyAIToLinalg.cpp
   Transforms/AffineCacheTiling.cpp
+  Transforms/AffineRegisterBlocking.cpp
+  Transforms/AffineVectorize.cpp
   Transforms/MemrefCopyToLinalg.cpp
   Pipelines/Pipelines.cpp
 
@@ -16,6 +18,7 @@ add_mlir_dialect_library(MLIRToyAI
   LINK_LIBS PUBLIC
   MLIRAffineAnalysis
   MLIRAffineDialect
+  MLIRAffineTransforms
   MLIRAffineUtils
   MLIRArithDialect
   MLIRFuncDialect
@@ -27,4 +30,5 @@ add_mlir_dialect_library(MLIRToyAI
   MLIRSideEffectInterfaces
   MLIRTensorDialect
   MLIRTransforms
+  MLIRVectorDialect
   )
