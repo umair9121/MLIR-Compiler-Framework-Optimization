@@ -6,6 +6,7 @@ add_mlir_dialect_library(MLIRToyAI
   Transforms/AffineRegisterBlocking.cpp
   Transforms/AffineVectorize.cpp
   Transforms/GPUDataMovement.cpp
+  Transforms/GPUSharedMatmul.cpp
   Transforms/GPUTiling.cpp
   Transforms/MemrefCopyToLinalg.cpp
   Pipelines/Pipelines.cpp

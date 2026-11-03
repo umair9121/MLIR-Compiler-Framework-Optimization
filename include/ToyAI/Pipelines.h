@@ -33,6 +33,10 @@ struct GpuPipelineOptions : public PassPipelineOptions<GpuPipelineOptions> {
   PassOptions::Option<int64_t> blockY{*this, "block-y",
                                       llvm::cl::desc("Threads per block (y)"),
                                       llvm::cl::init(16)};
+  PassOptions::Option<bool> sharedMatmul{
+      *this, "shared-matmul",
+      llvm::cl::desc("Use the shared-memory tiled kernel for matmul"),
+      llvm::cl::init(true)};
   PassOptions::Option<std::string> chip{*this, "chip",
                                         llvm::cl::desc("NVIDIA SM target"),
                                         llvm::cl::init("sm_86")};

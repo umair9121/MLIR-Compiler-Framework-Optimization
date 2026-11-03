@@ -42,6 +42,17 @@ def test_gpu_matches_numpy(compiler, name):
     np.testing.assert_allclose(got, evaluate(fn, inputs), rtol=1e-4, atol=1e-4)
 
 
+@pytest.mark.parametrize("shared", [True, False], ids=["shared-memory", "simple"])
+@pytest.mark.parametrize("m,k,n", [(64, 16, 64), (128, 96, 256), (256, 512, 192)])
+def test_matmul_kernels(compiler, shared, m, k, n):
+    program = parse(f"def f(A: f32[{m},{k}], B: f32[{k},{n}]) -> f32[{m},{n}] {{ return A @ B; }}")
+    module = compiler.compile(program, target="gpu", gpu=GpuOptions(shared_matmul=shared))
+    rng = np.random.default_rng(11)
+    a = rng.standard_normal((m, k)).astype(np.float32)
+    b = rng.standard_normal((k, n)).astype(np.float32)
+    np.testing.assert_allclose(module["f"](a, b), a @ b, rtol=1e-4, atol=1e-4)
+
+
 @pytest.mark.parametrize("block", [(8, 8), (32, 8), (16, 16)])
 def test_block_shapes(compiler, block):
     program = parse("def f(A: f32[100,60], B: f32[60,130]) -> f32[100,130] { return relu(A @ B); }")

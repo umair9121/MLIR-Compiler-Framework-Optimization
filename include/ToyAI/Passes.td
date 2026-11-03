@@ -105,6 +105,23 @@ def ToyAIGPUTiling : Pass<"toyai-gpu-tiling", "func::FuncOp"> {
   ];
 }
 
+def ToyAIGPUSharedMatmul : Pass<"toyai-gpu-shared-matmul", "func::FuncOp"> {
+  let summary = "Emit a shared-memory, register-tiled GPU kernel for matmul";
+  let description = [{
+    Replaces the scf.parallel + scf.for nest of a matmul whose sizes are
+    multiples of 64 (M, N) and 16 (K) with a gpu.launch in which each
+    16x16-thread block computes a 64x64 tile of C: every thread keeps a 4x4
+    register tile, and 64x16 / 16x64 panels of A and B are staged through
+    workgroup (shared) memory between gpu.barrier ops. Other shapes are left
+    for toyai-gpu-tiling.
+  }];
+  let dependentDialects = [
+    "::mlir::gpu::GPUDialect",
+    "::mlir::memref::MemRefDialect",
+    "::mlir::scf::SCFDialect",
+  ];
+}
+
 def ToyAIGPUDataMovement : Pass<"toyai-gpu-data-movement", "func::FuncOp"> {
   let summary = "Place buffers on the device and insert host<->device copies";
   let description = [{

@@ -60,11 +60,13 @@ void toyai::buildToyAIGpuPipeline(OpPassManager &pm,
   buildToyAIBufferizationPipeline(pm);
   addPipeline(pm, llvm::formatv(
                       "func.func(convert-linalg-to-parallel-loops,canonicalize,"
+                      "{2}"
                       "toyai-gpu-tiling{{block-x={0} block-y={1}},"
                       "toyai-gpu-data-movement,"
                       "convert-parallel-loops-to-gpu,canonicalize),"
                       "gpu-kernel-outlining,func.func(gpu-async-region)",
-                      opts.blockX.getValue(), opts.blockY.getValue())
+                      opts.blockX.getValue(), opts.blockY.getValue(),
+                      opts.sharedMatmul ? "toyai-gpu-shared-matmul," : "")
                       .str());
 
   gpu::GPUToNVVMPipelineOptions nvvm;

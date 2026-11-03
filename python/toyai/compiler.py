@@ -56,10 +56,14 @@ class GpuOptions:
 
     block_x: int = 16
     block_y: int = 16
+    shared_matmul: bool = True
     chip: str = "sm_86"
 
     def pipeline(self) -> str:
-        return f"toyai-gpu-pipeline{{block-x={self.block_x} block-y={self.block_y} chip={self.chip}}}"
+        return (
+            f"toyai-gpu-pipeline{{block-x={self.block_x} block-y={self.block_y} "
+            f"shared-matmul={str(self.shared_matmul).lower()} chip={self.chip}}}"
+        )
 
 
 @dataclass
