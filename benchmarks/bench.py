@@ -7,6 +7,7 @@ Variants:
   cpu-opt      cache tiling + vectorization + register blocking (1 thread)
   gpu          toyai-gpu-pipeline on the CUDA device, end to end
                (host->device copies, kernels, device->host copy)
+  gpu-simple   same, without the shared-memory matmul kernel (matmul only)
   numpy-1t     NumPy/OpenBLAS restricted to one thread
   numpy        NumPy/OpenBLAS with all threads
 
@@ -30,7 +31,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "python"))
 
 from toyai import parse  # noqa: E402
-from toyai.compiler import Compiler, CpuOptions  # noqa: E402
+from toyai.compiler import Compiler, CpuOptions, GpuOptions  # noqa: E402
 from toyai.reference import conv2d_nchw  # noqa: E402
 
 
@@ -111,11 +112,12 @@ def run(cases: list[dict], reps: int) -> list[dict]:
             a, b, padding=(case["shapes"][1][2] // 2,) * 2)
         row = {"case": case["name"], "gflop": case["flops"] / 1e9, "seconds": {}}
 
-        variants = [("cpu-opt", "cpu", CpuOptions(optimize=True)), ("gpu", "gpu", None)]
+        variants = [("cpu-opt", "cpu", {"cpu": CpuOptions(optimize=True)}), ("gpu", "gpu", {})]
         if case["naive"]:
-            variants.insert(0, ("cpu-naive", "cpu", CpuOptions(optimize=False)))
-        for label, target, cpu in variants:
-            kwargs = {"cpu": cpu} if cpu else {}
+            variants.insert(0, ("cpu-naive", "cpu", {"cpu": CpuOptions(optimize=False)}))
+        if case["name"].startswith("matmul"):
+            variants.insert(-1, ("gpu-simple", "gpu", {"gpu": GpuOptions(shared_matmul=False)}))
+        for label, target, kwargs in variants:
             module = compiler.compile(program, target=target, **kwargs)
             out = np.empty(want.shape, np.float32)
             module["k"](a, b, out=out)
@@ -137,18 +139,18 @@ def plot(results: list[dict], path: Path) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    labels = ["cpu-naive", "cpu-opt", "numpy-1t", "gpu", "numpy"]
+    labels = ["cpu-naive", "cpu-opt", "numpy-1t", "numpy", "gpu-simple", "gpu"]
     colors = {"cpu-naive": "#bbbbbb", "cpu-opt": "#4c72b0", "numpy-1t": "#8fb0d8",
-              "gpu": "#55a868", "numpy": "#c44e52"}
+              "numpy": "#c44e52", "gpu-simple": "#a6d8a8", "gpu": "#2e8b3e"}
     names = {"cpu-naive": "ToyAI CPU naive", "cpu-opt": "ToyAI CPU tiled+vectorized (1 thread)",
-             "numpy-1t": "NumPy/OpenBLAS (1 thread)", "gpu": "ToyAI GPU (incl. transfers)",
-             "numpy": "NumPy/OpenBLAS (20 threads)"}
-    fig, ax = plt.subplots(figsize=(11, 5))
-    width = 0.16
+             "numpy-1t": "NumPy/OpenBLAS (1 thread)", "numpy": "NumPy/OpenBLAS (20 threads)",
+             "gpu-simple": "ToyAI GPU, 1 output/thread", "gpu": "ToyAI GPU (shared-memory matmul)"}
+    fig, ax = plt.subplots(figsize=(12, 5.5))
+    width = 0.14
     x = np.arange(len(results))
     for i, label in enumerate(labels):
         vals = [r["gflops"].get(label, 0.0) for r in results]
-        bars = ax.bar(x + (i - 2) * width, vals, width, label=names[label], color=colors[label])
+        bars = ax.bar(x + (i - 2.5) * width, vals, width, label=names[label], color=colors[label])
         for bar, v in zip(bars, vals):
             if v > 0:
                 ax.annotate(f"{v:.0f}" if v >= 10 else f"{v:.1f}", (bar.get_x() + bar.get_width() / 2, v),
