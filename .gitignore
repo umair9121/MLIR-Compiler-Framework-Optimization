@@ -1,0 +1,9 @@
+build/
+out/
+.toyai_cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.vs/
+.vscode/
